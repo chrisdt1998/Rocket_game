@@ -1,0 +1,216 @@
+import pygame
+import numpy as np
+import math
+
+pygame.init()
+
+class Player(object):
+    def __init__(self, size, colour, window, speed, bullet_speed, bullet_size, bullet_colour):
+        self.player_settings = {'size': size, 'colour': colour, 'speed': speed}
+        self.bullet_settings = {'speed': bullet_speed, 'size': bullet_size, 'colour': bullet_colour}
+        self.bullets_shot = []
+        self.position = [250, 450]
+        self.window = window
+
+    def draw(self):
+        pygame.draw.rect(self.window, self.player_settings['colour'], (
+        self.position[0] - self.player_settings['size'], self.position[1], self.player_settings['size'] * 3,
+        self.player_settings['size'] * 3))
+
+    def move(self, action):
+        if action[0] == 1:
+            if self.player_settings['speed'] + self.player_settings['size'] <= self.position[0]:
+                self.position[0] -= self.player_settings['speed']
+        if action[1] == 1:
+            if self.position[0] <= 500 - self.player_settings['speed'] - (self.player_settings['size'] * 2):
+                self.position[0] += self.player_settings['speed']
+        # Not considering bullet shooting just yet.
+        # if action[2] == 1:
+        #     if len(self.bullets_shot) < 10:
+        #         self.bullets_shot.append(Bullets(self.bullet_settings, self.position.copy(), self.window))
+
+    def bullet_movement(self):
+        for bullet in self.bullets_shot:
+            bullet.move()
+            if bullet.position[1] < 0:
+                self.bullets_shot.pop(self.bullets_shot.index(bullet))
+
+
+class Bullets(object):
+    def __init__(self, bullet_settings, position, window):
+        self.bullet_settings = bullet_settings
+        self.position = position
+        self.window = window
+
+    def move(self):
+        self.position[1] -= self.bullet_settings['speed']
+
+    def draw(self):
+        pygame.draw.circle(self.window, self.bullet_settings['colour'], self.position, self.bullet_settings['size'])
+
+class Rock(object):
+    def __init__(self, size, colour, speed, position, window):
+        self.size = size
+        self.colour = colour
+        self.position = position
+        self.speed = speed
+        self.window = window
+
+    def move(self):
+        self.position[1] += self.speed
+
+    def draw(self):
+        pygame.draw.circle(self.window, self.colour, self.position, self.size)
+
+
+class Game(object):
+    def __init__(self, background_colour, rock_colour):
+        self.clock = pygame.time.Clock()
+        self.rock_colour = rock_colour
+        self.background_colour = background_colour
+        self.window = pygame.display.set_mode((500, 500))
+
+        self.reset()
+
+    def reset(self):
+        self.player = Player(10, (0, 255, 0), self.window, 10, 10 * 1.5, 5, (125, 0, 125))
+        self.rocks = []
+        self.rock_speed = 1
+        self.speed_lwr_bnd = 1
+        self.speed_upr_bnd = self.speed_lwr_bnd + 4
+        self.rock_radius = 1
+        self.speed_timer = 0
+        self.frame_iteration = 0
+
+    def update_screen(self):
+        self.window.fill(self.background_colour)
+        self.player.draw()
+        for rock in self.rocks:
+            rock.draw()
+        for bullet in self.player.bullets_shot:
+            bullet.draw()
+        pygame.display.update()
+
+    def rock_timer(self):
+        if self.rock_radius > 0:
+            self.rock_radius -= self.rock_speed
+        else:
+            self.rock_spawn()
+
+    def rock_spawn(self):
+        size = np.random.randint(5, 20)
+        position = [np.random.randint(0 + size, 500 - size), size]
+        self.rock_speed = np.random.randint(self.speed_lwr_bnd, self.speed_upr_bnd)
+        self.rock_radius = size * 2
+        rock = Rock(size, self.rock_colour, self.rock_speed, position, self.window)
+        self.rocks.append(rock)
+
+    def rock_movement(self):
+        for rock in self.rocks:
+            rock.move()
+            if rock.position[1] - rock.size >= 500:
+                self.rocks.pop(self.rocks.index(rock))
+
+    def danger_rocks(self, num_rocks):
+        nearby_rocks = {'positions': np.zeros((num_rocks, 2)), 'speeds': np.zeros(num_rocks), 'sizes': np.zeros(num_rocks)}
+        furthest_rock_idx = 0
+        furthest_rock_dist = 0
+        for i, rock in enumerate(self.rocks):
+            if i <= num_rocks:
+                nearby_rocks['positions'][i] = rock.position
+                nearby_rocks['speeds'][i] = rock.speed
+                nearby_rocks['sizes'][i] = rock.size
+                if self.compute_dist_to_rock(rock.position, rock.size) > furthest_rock_dist:
+                    furthest_rock_idx = i
+                    furthest_rock_dist = self.compute_dist_to_rock(rock.position, rock.size)
+            elif self.compute_dist_to_rock(rock.position, rock.size) < furthest_rock_dist:
+                nearby_rocks['positions'][furthest_rock_idx] = rock.position
+                nearby_rocks['speeds'][furthest_rock_idx] = rock.speed
+                nearby_rocks['sizes'][furthest_rock_idx] = rock.size
+                furthest_rock_dist, furthest_rock_idx = self.find_furthest_rock(nearby_rocks, num_rocks)
+
+        return nearby_rocks
+
+    def compute_dist_to_rock(self, rock_pos, rock_rad):
+        dist = math.sqrt((self.player.position[0] - rock_pos[0] ** 2) + (self.player.position[1] - rock_pos[1] ** 2))
+        return dist - rock_rad
+
+    def find_furthest_rock(self, nearby_rocks, num_rocks):
+        furthest_rock_idx = 0
+        furthest_rock_dist = 0
+        for i in range(num_rocks):
+            rock_pos = nearby_rocks['positions'][i]
+            rock_rad = nearby_rocks['sizes'][i]
+            dist = self.compute_dist_to_rock(rock_pos, rock_rad)
+            if dist > furthest_rock_dist:
+                furthest_rock_dist = dist
+                furthest_rock_idx = i
+        return furthest_rock_dist, furthest_rock_idx
+
+    def check_bullet_collision(self):
+        for bullet in self.player.bullets_shot:
+            for rock in self.rocks:
+                x = bullet.position[0] - rock.position[0]
+                y = bullet.position[1] - rock.position[1]
+                c = math.sqrt(x ** 2 + y ** 2)
+                if c <= bullet.bullet_settings['size'] + rock.size:
+                    self.player.bullets_shot.pop(self.player.bullets_shot.index(bullet))
+                    self.rocks.pop(self.rocks.index(rock))
+                    return
+
+    def check_player_collision(self):
+        for rock in self.rocks:
+            player_size = self.player.player_settings['size']
+            corners_x = [player_size, 0, player_size, 2 * player_size]
+            corners_y = [0, player_size, player_size, 0]
+            corners_x = [x + self.player.position[0] for x in corners_x]
+            corners_y = [y + self.player.position[1] for y in corners_y]
+            for x, y in zip(corners_x, corners_y):
+                x -= rock.position[0]
+                y -= rock.position[1]
+                c = math.sqrt(x ** 2 + y ** 2)
+                if c <= rock.size:
+                    # print(f"Corner hit!")
+                    return True
+            if self.player.position[1] - player_size >= rock.position[1] >= self.player.position[1] + player_size:
+                if self.player.position[0] <= rock.position[0] <= self.player.position[0] + player_size:
+                    # print(f"Top hit!")
+                    return True
+
+            if self.player.position[1] - player_size >= rock.position[1] >= self.player.position[1]:
+                if self.player.position[0] - player_size <= rock.position[0] <= self.player.position[0] + (2 * player_size):
+                    # print(f"Side hit!")
+                    return True
+        return False
+
+    def play_step(self, action):
+        self.frame_iteration += 1
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+        self.player.move(action)
+        self.rock_movement()
+        self.rock_timer()
+        self.player.bullet_movement()
+        self.check_bullet_collision()
+
+        reward = 0
+        game_over = False
+        if self.check_player_collision():
+            game_over = True
+            reward = -10
+            return reward, game_over, self.frame_iteration
+        reward = 10
+
+        self.update_screen()
+        self.clock.tick(27)
+        if pygame.time.get_ticks() / 1000 > self.speed_timer:
+            # print(f"Speed increase!")
+            self.speed_timer += 1
+            self.speed_lwr_bnd += 0.1
+            self.speed_upr_bnd += 0.1
+
+        return reward, game_over, self.frame_iteration
+
