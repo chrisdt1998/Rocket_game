@@ -3,8 +3,9 @@ import random
 import numpy as np
 from helper import plot
 from collections import deque
-from rocket_game_AI import Game
 from model import Linear_QNet, QTrainer
+import gym
+game = gym.make('MountainCar-v0')
 
 MAX_MEMORY = 100_000
 BATCH_SIZE = 100
@@ -23,24 +24,6 @@ class Agent:
             self.model = Linear_QNet(22, 256, 3)
             self.model.load_state_dict(torch.load(model_path))
             self.model.eval()
-
-
-    def get_state(self, game):
-        # State contains the position of the player, nearby rocks positions, nearby rocks sizes, nearby rocks speeds.
-        # Normalize speed wrt to upper speed bnd
-        # normalize positions
-        # normalize sizes wrt max size
-        nearby_rocks = game.danger_rocks(5)
-        nearby_rock_positions = []
-        nearby_rock_sizes = []
-        nearby_rock_speeds = []
-        for pos, size, speed in zip(nearby_rocks['positions'], nearby_rocks['sizes'], nearby_rocks['speeds']):
-            nearby_rock_positions += (pos/game.window_width).tolist()
-            nearby_rock_sizes.append(size/game.rock_size_upr_bnd)
-            nearby_rock_speeds.append(speed/game.speed_upr_bnd)
-        state = [game.player.position[0]/game.window_height, game.player.position[1]/game.window_width] + nearby_rock_positions + nearby_rock_sizes + nearby_rock_speeds
-        # print(state)
-        return np.array(state, dtype=float)
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
@@ -79,17 +62,13 @@ def train(show_visuals=True):
     total_score = 0
     record = 0
     agent = Agent()
-    game = Game(show_visuals=show_visuals)
+    state_old = game.reset()
     while True:
-        # Get previous state
-        state_old = agent.get_state(game)
-
         # Get move
         final_move = agent.get_action(state_old)
 
         # Perform move and get new state
-        reward, done, score = game.play_step(final_move)
-        state_new = agent.get_state(game)
+        state_new, reward, done, info = game.step(final_move)
 
         # Train short memory
         agent.train_short_memory(state_old, final_move, reward, state_new, done)

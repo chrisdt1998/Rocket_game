@@ -1,8 +1,5 @@
-import numpy as np
+import pygame
 
-pos = np.zeros((10, 2))
-psotion = [20, 2]
-
-pos[0] = psotion
-
-print(pos)
+l = [2, 3]
+a = [5, 56, 3, 42, 9]
+print(l/2, a/1000)
