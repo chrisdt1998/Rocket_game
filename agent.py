@@ -1,3 +1,5 @@
+import copy
+
 import torch
 import random
 import numpy as np
@@ -7,22 +9,23 @@ from rocket_game_AI import Game
 from model import Linear_QNet, QTrainer
 
 MAX_MEMORY = 100_000
-BATCH_SIZE = 100
+BATCH_SIZE = 32
 LR = 0.0001
 
 class Agent:
     def __init__(self, model_path=None):
         self.n_games = 0
         self.epsilon = 0
-        self.gamma = 0.9 # Discount rate, should be smaller than 1
+        self.gamma = 0.99 # Discount rate, should be smaller than 1
         self.memory = deque(maxlen=MAX_MEMORY)
         if model_path is None:
-            self.model = Linear_QNet(22, 256, 3) # State size, hidden size and output action size
-            self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
+            self.model_main = Linear_QNet(22, 256, 3) # State size, hidden size and output action size
+            self.model_target = copy.deepcopy(self.model_main)
+            self.trainer = QTrainer(self.model_main, lr=LR, gamma=self.gamma)
         else:
-            self.model = Linear_QNet(22, 256, 3)
-            self.model.load_state_dict(torch.load(model_path))
-            self.model.eval()
+            self.model_main = Linear_QNet(22, 256, 3)
+            self.model_main.load_state_dict(torch.load(model_path))
+            self.model_main.eval()
 
 
     def get_state(self, game):
@@ -45,28 +48,28 @@ class Agent:
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
 
-    def train_long_memory(self):
+    def train_long_memory(self, model_target):
         if len(self.memory) > BATCH_SIZE:
             mini_sample = random.sample(self.memory, BATCH_SIZE) # list of tuples
         else:
             mini_sample = self.memory
 
         states, actions, rewards, next_states, dones = zip(*mini_sample)
-        self.trainer.train_step(states, actions, rewards, next_states, dones)
+        self.trainer.train_step(states, actions, rewards, next_states, model_target, dones)
 
 
-    def train_short_memory(self, state, action, reward, next_state, done):
-        self.trainer.train_step(state, action, reward, next_state, done)
+    def train_short_memory(self, state, action, reward, next_state, model_target, done):
+        self.trainer.train_step(state, action, reward, next_state, model_target, done)
 
     def get_action(self, state, test=False):
         # random moves: tradeoff exploration / exploitation
-        self.epsilon = 80 - self.n_games
+        self.epsilon = 1000 - self.n_games
         final_move = [0, 0, 0]
-        if random.randint(0, 200) < self.epsilon and not test:
+        if random.randint(0, 1000) < self.epsilon and not test:
             move = random.randint(0, 2)
         else:
-            state0 = torch.tensor(state, dtype=torch.float)
-            prediction = self.model(state0)
+            state = torch.tensor(state, dtype=torch.float)
+            prediction = self.model_main(state)
             move = torch.argmax(prediction).item()
 
         final_move[move] = 1
@@ -80,6 +83,7 @@ def train(show_visuals=True):
     record = 0
     agent = Agent()
     game = Game(show_visuals=show_visuals)
+    current_iter = 0
     while True:
         # Get previous state
         state_old = agent.get_state(game)
@@ -92,7 +96,7 @@ def train(show_visuals=True):
         state_new = agent.get_state(game)
 
         # Train short memory
-        agent.train_short_memory(state_old, final_move, reward, state_new, done)
+        agent.train_short_memory(state_old, final_move, reward, state_new, agent.model_target, done)
 
         # Store state, action and reward
         agent.remember(state_old, final_move, reward, state_new, done)
@@ -101,12 +105,12 @@ def train(show_visuals=True):
             # Train long memory, plot result
             game.reset()
             agent.n_games += 1
-            agent.train_long_memory()
+            agent.train_long_memory(agent.model_target)
 
             if score > record:
                 record = score
                 print("Saving model")
-                agent.model.save()
+                agent.model_main.save()
 
             print('Game', agent.n_games, 'Score', score, 'Record:', record)
 
@@ -115,6 +119,11 @@ def train(show_visuals=True):
             mean_score = total_score / agent.n_games
             plot_mean_scores.append(mean_score)
             plot(plot_scores, plot_mean_scores)
+
+        current_iter += 1
+        if current_iter % 2000 == 0:
+            print("Updating model target")
+            agent.model_target = copy.deepcopy(agent.model_main)
 
 def test(show_visuals=True):
     model_path = 'model/model.pth'
