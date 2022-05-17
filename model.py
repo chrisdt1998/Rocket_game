@@ -9,12 +9,14 @@ class Linear_QNet(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super().__init__()
         self.linear1 = nn.Linear(input_size, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear3 = nn.Linear(hidden_size, output_size)
+        self.linear2 = nn.Linear(hidden_size, 48)
+        self.linear3 = nn.Linear(48, output_size)
 
     def forward(self, x):
         x = F.relu(self.linear1(x))
         x = F.relu(self.linear2(x))
+        # x = self.linear1(x)
+        # x = self.linear2(x)
         x = self.linear3(x)
         return x
 
@@ -36,40 +38,38 @@ class QTrainer:
         self.criterion = nn.MSELoss()
 
     def train_step(self, state, action, reward, next_state, model_target, done):
+        self.model.train()
         state = torch.tensor(state, dtype=torch.float)
         action = torch.tensor(action, dtype=torch.long)
         reward = torch.tensor(reward, dtype=torch.float)
         next_state = torch.tensor(next_state, dtype=torch.float)
+        done = torch.tensor(done, dtype=torch.float32)
 
         if len(state.shape) == 1:
-            state = torch.unsqueeze(state, dim=0)
-            action = torch.unsqueeze(action, dim=0)
-            reward = torch.unsqueeze(reward, dim=0)
-            next_state = torch.unsqueeze(next_state, dim=0)
-            done = (done, )
+            state = torch.unsqueeze(state, 0)
+            action = torch.unsqueeze(action, 0)
+            reward = torch.unsqueeze(reward, 0)
+            next_state = torch.unsqueeze(next_state, 0)
+            done = torch.unsqueeze(done, 0)
 
-        # 1: predicted Q values with current state
+        next_state_Q = torch.max(model_target(next_state), dim=-1)[0]
+        target = reward + (1. - done) * self.gamma * next_state_Q
+
         pred = self.model(state)
 
-        # 2: Q_new = r + gamma * max(next_predicted Q value) -> Only do this if not done
-        # pred.clone()
-        # preds[argmax(action)] = Q_new
+        if action.shape[-1] > 1 and action.shape[0] != action.shape[-1]:
+            action_mask = action
+        else:
+            action_mask = F.one_hot(action, num_classes=3)
 
-        target = pred.clone()
-        # target = model_target(state)
-        next_state_Q = model_target(next_state)
-        for idx in range(len(done)):
-            Q_new = reward[idx]
-            if not done[idx]:
-                Q_new = reward[idx] + self.gamma * torch.max(next_state_Q[idx])
-
-            target[idx][torch.argmax(action).item()] = Q_new
-
+        masked_pred = torch.sum(action_mask * pred, dim=-1)
         self.optimizer.zero_grad()
-        loss = self.criterion(target, pred)
+        loss = self.criterion(masked_pred, target)
         loss.backward()
 
         self.optimizer.step()
+
+
 
 
 

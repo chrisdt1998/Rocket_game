@@ -1,5 +1,10 @@
-import pygame
+import torch.nn as nn
+import torch
+import torch.nn.functional as F
 
-l = [2, 3]
-a = [5, 56, 3, 42, 9]
-print(l/2, a/1000)
+t = torch.tensor([0])
+a = torch.tensor([[-0.1399, -0.0398, -0.3521]])
+arr = F.one_hot(t, num_classes=3)
+output = arr * a
+print(output)
+print(torch.sum(output, dim=-1))

@@ -16,9 +16,6 @@ class Player(object):
         self.player_rect.center = self.position
 
     def draw(self):
-        # pygame.draw.rect(self.window, self.player_settings['colour'], (
-        # self.position[0] - self.player_settings['size'], self.position[1], self.player_settings['size'] * 3,
-        # self.player_settings['size'] * 3))
         pygame.draw.rect(self.window, self.player_settings['colour'], self.player_rect)
 
 
@@ -27,9 +24,9 @@ class Player(object):
             if self.player_settings['speed'] + self.player_settings['size'] <= self.position[0]:
                 self.position[0] -= self.player_settings['speed']
         if action[1] == 1:
-            if self.position[0] <= 500 - self.player_settings['speed'] - (self.player_settings['size'] * 2):
+            if self.position[0] <= 500 - self.player_settings['speed'] - (self.player_settings['size']):
                 self.position[0] += self.player_settings['speed']
-
+        # Shoot bullets
         # if action[2] == 1:
         #     if len(self.bullets_shot) < 1:
         #         self.bullets_shot.append(Bullets(self.bullet_settings, self.position.copy(), self.window))
@@ -74,10 +71,8 @@ class Rock(object):
 
     def draw(self):
         if self.is_danger:
-            # pygame.draw.rect(self.window, (255, 182, 193), self.rock_rect)
             pygame.draw.circle(self.window, (255, 0, 0), self.position, self.size)
         else:
-            # pygame.draw.rect(self.window, (255, 182, 193), self.rock_rect)
             pygame.draw.circle(self.window, self.colour, self.position, self.size)
 
 
@@ -167,7 +162,7 @@ class Game(object):
         for rock in danger_rocks:
             rock.is_danger = True
 
-        return nearby_rocks
+        return self.reorder_danger_rocks(nearby_rocks)
 
     def compute_dist_to_rock(self, rock_pos, rock_rad):
         dist = math.sqrt(((self.player.position[0] - rock_pos[0]) ** 2) + ((self.player.position[1] - rock_pos[1]) ** 2))
@@ -184,6 +179,18 @@ class Game(object):
                 furthest_rock_dist = dist
                 furthest_rock_idx = i
         return furthest_rock_dist, furthest_rock_idx
+
+    def reorder_danger_rocks(self, danger_rocks):
+        dist_arr = []
+        for i, rock in enumerate(danger_rocks['positions']):
+            dist = self.compute_dist_to_rock(rock, danger_rocks['sizes'][i])
+            dist_arr.append(dist)
+        dist_arr = np.array(dist_arr)
+        arr_order = dist_arr.argsort()
+        danger_rocks['positions'] = danger_rocks['positions'][arr_order]
+        danger_rocks['sizes'] = danger_rocks['sizes'][arr_order]
+        danger_rocks['speeds'] = danger_rocks['speeds'][arr_order]
+        return danger_rocks
 
     def check_bullet_collision(self):
         for bullet in self.player.bullets_shot:
@@ -231,7 +238,6 @@ class Game(object):
             self.update_screen()
             self.clock.tick(27)
         if self.frame_iteration / 100 > self.speed_timer:
-            # print(f"Speed increase!")
             self.speed_timer += 1
             self.speed_lwr_bnd += 0.1
             self.speed_upr_bnd += 0.1

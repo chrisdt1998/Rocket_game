@@ -8,31 +8,31 @@ from collections import deque
 from rocket_game_AI import Game
 from model import Linear_QNet, QTrainer
 
-MAX_MEMORY = 100_000
+MAX_MEMORY = 20000
 BATCH_SIZE = 32
 LR = 0.0001
 
 class Agent:
     def __init__(self, model_path=None):
         self.n_games = 0
-        self.epsilon = 0
+        self.epsilon = 1
+        self.epsilon_decay = 0.05
+        self.epsilon_min = 0.01
         self.gamma = 0.99 # Discount rate, should be smaller than 1
         self.memory = deque(maxlen=MAX_MEMORY)
         if model_path is None:
-            self.model_main = Linear_QNet(22, 256, 3) # State size, hidden size and output action size
+            self.model_main = Linear_QNet(22, 24, 3) # State size, hidden size and output action size
             self.model_target = copy.deepcopy(self.model_main)
             self.trainer = QTrainer(self.model_main, lr=LR, gamma=self.gamma)
         else:
-            self.model_main = Linear_QNet(22, 256, 3)
+            self.model_main = Linear_QNet(22, 24, 3)
             self.model_main.load_state_dict(torch.load(model_path))
             self.model_main.eval()
 
 
     def get_state(self, game):
         # State contains the position of the player, nearby rocks positions, nearby rocks sizes, nearby rocks speeds.
-        # Normalize speed wrt to upper speed bnd
-        # normalize positions
-        # normalize sizes wrt max size
+        # The nearby rocks have been rearrange from nearest to furthest.
         nearby_rocks = game.danger_rocks(5)
         nearby_rock_positions = []
         nearby_rock_sizes = []
@@ -42,7 +42,6 @@ class Agent:
             nearby_rock_sizes.append(size/game.rock_size_upr_bnd)
             nearby_rock_speeds.append(speed/game.speed_upr_bnd)
         state = [game.player.position[0]/game.window_height, game.player.position[1]/game.window_width] + nearby_rock_positions + nearby_rock_sizes + nearby_rock_speeds
-        # print(state)
         return np.array(state, dtype=float)
 
     def remember(self, state, action, reward, next_state, done):
@@ -62,10 +61,9 @@ class Agent:
         self.trainer.train_step(state, action, reward, next_state, model_target, done)
 
     def get_action(self, state, test=False):
-        # random moves: tradeoff exploration / exploitation
-        self.epsilon = 1000 - self.n_games
         final_move = [0, 0, 0]
-        if random.randint(0, 1000) < self.epsilon and not test:
+        # random moves: tradeoff exploration / exploitation
+        if random.uniform(0, 1) < self.epsilon and not test:
             move = random.randint(0, 2)
         else:
             state = torch.tensor(state, dtype=torch.float)
@@ -104,6 +102,7 @@ def train(show_visuals=True):
         if done:
             # Train long memory, plot result
             game.reset()
+            agent.epsilon = agent.epsilon - agent.epsilon_decay if agent.epsilon > agent.epsilon_min else agent.epsilon_min
             agent.n_games += 1
             agent.train_long_memory(agent.model_target)
 
@@ -142,5 +141,5 @@ def test(show_visuals=True):
 
 
 if __name__ == '__main__':
-    # train(show_visuals=False)
-    test()
+    train(show_visuals=False)
+    # test()

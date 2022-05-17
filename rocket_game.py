@@ -162,11 +162,6 @@ class Game(object):
                     self.running = False
                     return
 
-    def reward(self):
-        pass
-
-
-
     def run(self):
         while self.running:
             clock.tick(27)
