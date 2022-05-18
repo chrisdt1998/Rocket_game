@@ -1,3 +1,9 @@
+"""
+This file represents the neural network and trainer for the DQN.
+
+This file was created and designed by Christopher du Toit.
+"""
+
 import torch
 import torch.nn as nn
 import torch.optim as optim

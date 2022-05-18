@@ -1,3 +1,10 @@
+"""
+This file represents the rocket game which has been edited such that it can take in actions from the DQN and output the
+resulting state and reward.
+
+This file was created and designed by Christopher du Toit.
+"""
+
 import pygame
 import numpy as np
 import math

@@ -1,3 +1,9 @@
+"""
+This file represents the rocket game which can be played via human input.
+
+This file was created and designed by Christopher du Toit.
+"""
+
 import pygame
 import numpy as np
 import math

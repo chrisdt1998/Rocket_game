@@ -1,5 +1,10 @@
-import copy
+"""
+This file represents the custom rocket game agent which can be trained via DQN to learn the environment.
 
+This file was created and designed by Christopher du Toit.
+"""
+
+import copy
 import torch
 import random
 import numpy as np

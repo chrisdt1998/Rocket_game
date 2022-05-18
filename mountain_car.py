@@ -1,9 +1,12 @@
-import copy
+"""
+This file represents the mountain car agent which can be trained via DQN to learn the environment.
 
+This file was created and designed by Christopher du Toit.
+"""
+
+import copy
 import torch
 import random
-import numpy as np
-from helper import plot
 from collections import deque
 from model import Linear_QNet, QTrainer
 import gym
