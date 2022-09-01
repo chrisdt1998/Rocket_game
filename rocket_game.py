@@ -119,7 +119,8 @@ class Game(object):
 
     def rock_spawn(self):
         size = np.random.randint(5, 20)
-        position = [np.random.randint(0 + size, 500 - size), size]
+        position = [np.random.randint(0 - size, 500 + size), size]
+        print(position)
         self.rock_speed = np.random.randint(self.speed_lwr_bnd, self.speed_upr_bnd)
         self.rock_radius = size * 2
         rock = Rock(size, self.rock_colour, self.rock_speed, position, self.window)

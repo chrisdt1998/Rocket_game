@@ -19,11 +19,17 @@ class Linear_QNet(nn.Module):
         self.linear3 = nn.Linear(48, output_size)
 
     def forward(self, x):
-        x = F.relu(self.linear1(x))
-        x = F.relu(self.linear2(x))
-        # x = self.linear1(x)
-        # x = self.linear2(x)
+        # print(x)
+        # x = F.relu(self.linear1(x))
+        # print(x)
+        # x = F.relu(self.linear2(x))
+        print(x)
+        x = self.linear1(x)
+        print(x)
+        x = self.linear2(x)
+        print(x)
         x = self.linear3(x)
+        print(x)
         return x
 
     def save(self, file_name='model.pth'):

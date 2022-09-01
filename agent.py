@@ -15,13 +15,14 @@ from model import Linear_QNet, QTrainer
 
 MAX_MEMORY = 20000
 BATCH_SIZE = 32
-LR = 0.0001
+# LR = 0.0001
 
+LR = 0.00001
 class Agent:
     def __init__(self, model_path=None):
         self.n_games = 0
         self.epsilon = 1
-        self.epsilon_decay = 0.05
+        self.epsilon_decay = 0.005
         self.epsilon_min = 0.01
         self.gamma = 0.99 # Discount rate, should be smaller than 1
         self.memory = deque(maxlen=MAX_MEMORY)
@@ -72,10 +73,14 @@ class Agent:
             move = random.randint(0, 2)
         else:
             state = torch.tensor(state, dtype=torch.float)
+            print(state)
             prediction = self.model_main(state)
+            print(prediction)
             move = torch.argmax(prediction).item()
+            print(move)
 
         final_move[move] = 1
+        print(final_move)
 
         return final_move
 
@@ -146,5 +151,5 @@ def test(show_visuals=True):
 
 
 if __name__ == '__main__':
-    train(show_visuals=False)
-    # test()
+    # train(show_visuals=False)
+    test()

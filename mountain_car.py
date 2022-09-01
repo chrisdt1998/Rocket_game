@@ -129,5 +129,5 @@ def test(show_visuals=True):
 
     print(score)
 if __name__ == '__main__':
-    # train(show_visuals=True)
-    test()
+    train(show_visuals=True)
+    # test()
