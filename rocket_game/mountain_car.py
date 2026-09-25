@@ -8,7 +8,7 @@ import copy
 import torch
 import random
 from collections import deque
-from model import Linear_QNet, QTrainer
+from rocket_game.model import Linear_QNet, QTrainer
 import gym
 game = gym.make('MountainCar-v0')
 

@@ -8,10 +8,10 @@ import copy
 import torch
 import random
 import numpy as np
-from helper import plot
+from rocket_game.helper import plot
 from collections import deque
-from rocket_game_AI import Game
-from model import Linear_QNet, QTrainer
+from rocket_game_bit.rocket_game_bit_AI import Game
+from rocket_game.model import Linear_QNet, QTrainer
 
 MAX_MEMORY = 20000
 BATCH_SIZE = 32
@@ -34,7 +34,6 @@ class Agent:
             self.model_main = Linear_QNet(22, 24, 3)
             self.model_main.load_state_dict(torch.load(model_path))
             self.model_main.eval()
-
 
     def get_state(self, game):
         # State contains the position of the player, nearby rocks positions, nearby rocks sizes, nearby rocks speeds.
@@ -61,7 +60,6 @@ class Agent:
 
         states, actions, rewards, next_states, dones = zip(*mini_sample)
         self.trainer.train_step(states, actions, rewards, next_states, model_target, dones)
-
 
     def train_short_memory(self, state, action, reward, next_state, model_target, done):
         self.trainer.train_step(state, action, reward, next_state, model_target, done)
@@ -146,8 +144,6 @@ def test(show_visuals=True):
         reward, done, score = game.play_step(action)
 
     print(score)
-
-
 
 
 if __name__ == '__main__':

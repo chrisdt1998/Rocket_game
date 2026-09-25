@@ -35,3 +35,10 @@ further advancements may include shooting and moving up and down.
 - The mountain car implementation is also completed. 
 - The only (known) issue now is fine-tuning parameters as the model barely learns the mountain car method well and does 
 not learn the rocket game properly.
+
+## **Checkpoints:**
+- Changed the game from a linear game to a bit game, meaning there is much less info to process and simplifies the process.
+- Training games was increased significantly to 20000 with epsilong decay as 0.00005.
+- bestrun_first_train.pth is the model for the highest scoring run in the first train, reaching about 200 or so score.
+- Second training has epsilon starting from 0.25 instead of 1 and starts from the first checkpoint model. This training also penalises repeatitive alternating moves to prevent the flickering.
+- Second training produces the bestrun_second_train.pth which was the best performing model during the second training phase, reaching about 1200 score.
